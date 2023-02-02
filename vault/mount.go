@@ -61,10 +61,12 @@ const (
 	systemMountPath    = "sys/"
 	identityMountPath  = "identity/"
 	cubbyholeMountPath = "cubbyhole/"
+	myMountPath        = "my/"
 
 	systemMountType      = "system"
 	identityMountType    = "identity"
 	cubbyholeMountType   = "cubbyhole"
+	myMountType          = "my"
 	pluginMountType      = "plugin"
 	mountTypeNSCubbyhole = "ns_cubbyhole"
 
@@ -89,11 +91,13 @@ var (
 		"auth/",
 		systemMountPath,
 		cubbyholeMountPath,
+		myMountPath,
 		identityMountPath,
 	}
 
 	untunableMounts = []string{
 		cubbyholeMountPath,
+		myMountPath,
 		systemMountPath,
 		"audit/",
 		identityMountPath,
@@ -1515,7 +1519,7 @@ func (c *Core) setupMounts(ctx context.Context) error {
 			backendType := backend.Type()
 
 			if backendType != logical.TypeLogical {
-				if entry.Type != "kv" && entry.Type != "system" && entry.Type != "cubbyhole" {
+				if entry.Type != "kv" && entry.Type != "system" && entry.Type != "cubbyhole" && entry.Type != "my" {
 					return fmt.Errorf(`unknown backend type: "%s"`, entry.Type)
 				}
 			}
@@ -1739,6 +1743,26 @@ func (c *Core) requiredMountTable() *MountTable {
 		RunningVersion:   versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
 	}
 
+	myAccessor, err := c.generateMountAccessor("my")
+	if err != nil {
+		panic(fmt.Sprintf("could not generate my accessor: %v", err))
+	}
+	myBackendUUID, err := uuid.GenerateUUID()
+	if err != nil {
+		panic(fmt.Sprintf("could not create my backend UUID: %v", err))
+	}
+	myMount := &MountEntry{
+		Table:            mountTableType,
+		Path:             myMountPath,
+		Type:             myMountType,
+		Description:      "per-identity private secret storage",
+		UUID:             myBackendUUID,
+		Accessor:         myAccessor,
+		Local:            true,
+		BackendAwareUUID: myBackendUUID,
+		RunningVersion:   versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
+	}
+
 	sysUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		panic(fmt.Sprintf("could not create sys UUID: %v", err))
@@ -1793,6 +1817,7 @@ func (c *Core) requiredMountTable() *MountTable {
 	}
 
 	table.Entries = append(table.Entries, cubbyholeMount)
+	table.Entries = append(table.Entries, myMount)
 	table.Entries = append(table.Entries, sysMount)
 	table.Entries = append(table.Entries, identityMount)
 
