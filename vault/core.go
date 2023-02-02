@@ -394,6 +394,7 @@ type Core struct {
 
 	// cubbyholeBackend is the backend which manages the per-token storage
 	cubbyholeBackend *CubbyholeBackend
+	myBackend        *MyBackend
 
 	// systemBarrierView is the barrier view for the system backend
 	systemBarrierView *BarrierView
@@ -1184,6 +1185,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	logicalBackends["cubbyhole"] = CubbyholeBackendFactory
+	logicalBackends["my"] = MyBackendFactory
 	logicalBackends[systemMountType] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		sysBackendLogger := conf.Logger.Named("system")
 		c.AddLogger(sysBackendLogger)
